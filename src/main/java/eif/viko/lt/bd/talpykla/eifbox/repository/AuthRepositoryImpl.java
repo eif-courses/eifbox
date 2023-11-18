@@ -2,23 +2,21 @@ package eif.viko.lt.bd.talpykla.eifbox.repository;
 
 import eif.viko.lt.bd.talpykla.eifbox.model.User;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
 
-import java.util.Objects;
-
+import java.util.Collections;
 
 @Repository
 public class AuthRepositoryImpl implements AuthRepository {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Autowired
-    public AuthRepositoryImpl(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public AuthRepositoryImpl(NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+        this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
     }
 
     @Override
@@ -33,25 +31,41 @@ public class AuthRepositoryImpl implements AuthRepository {
         String hashedPassword = "labs"; // hashPassword(user.getPassword());
 
         String insertQuery = "INSERT IGNORE INTO Users (Name, Email, Password, Role, GroupName, Faculty, StudyProgram) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        Object[] values = {user.getName(), user.getEmail(), hashedPassword,
-                user.getRole().name(), user.getGroupName(), user.getFaculty(), user.getStudyProgram()};
+                "VALUES (:name, :email, :password, :role, :groupName, :faculty, :studyProgram)";
 
-        int rowsAffected = jdbcTemplate.update(insertQuery, values);
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("name", user.getName())
+                .addValue("email", user.getEmail())
+                .addValue("password", hashedPassword)
+                .addValue("role", user.getRole().name())
+                .addValue("groupName", user.getGroupName())
+                .addValue("faculty", user.getFaculty())
+                .addValue("studyProgram", user.getStudyProgram());
+        int rowsAffected = namedParameterJdbcTemplate.update(insertQuery, parameters);
 
         if (rowsAffected == 0) {
-            throw new HttpClientErrorException(HttpStatusCode.valueOf(400), "User with this email already exists");
+            throw new RuntimeException("User with this email already exists!");
         }
     }
 
     private int createFolder(User user) {
-        int studentId = Objects.requireNonNull(jdbcTemplate.queryForObject(
-                "SELECT UserID FROM Users WHERE Email = ?", Integer.class, user.getEmail()));
+        Integer userId = namedParameterJdbcTemplate.queryForObject(
+                "SELECT UserID FROM Users WHERE Email = :email",
+                Collections.singletonMap("email", user.getEmail()),
+                Integer.class);
 
+        if (userId == null) {
+            throw new RuntimeException("User not found");
+        }
 
-        String folderName = "test_" + studentId;
-        return jdbcTemplate.update("INSERT INTO Folders (FolderName, StudentID) VALUES (?, ?)",
-                folderName, studentId);
+        String folderName = "test_" + userId;
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource()
+                .addValue("folderName", folderName)
+                .addValue("userId", userId);
+
+        return namedParameterJdbcTemplate.update(
+                "INSERT INTO Folders (FolderName, StudentID) VALUES (:folderName, :userId)",
+                parameters);
     }
-
 }
