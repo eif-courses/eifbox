@@ -1,0 +1,9 @@
+# curl -X POST -d "username=myusername&password=mypassword" http://localhost:8888/api/v1/auth/register
+POST http://localhost:8888/api/v1/auth/register
+Content-Type: application/x-www-form-urlencoded
+
+username = myusername &
+password = mypassword
+
+###
+
