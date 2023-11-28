@@ -20,6 +20,7 @@ public class AppErrorHandler {
         ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
         pd.setDetail(ex.getMessage());
         pd.setProperty("timestamp", LocalDateTime.now());
+        pd.setProperty("Ivyko klaida", "Turbut nepavyko ikelti i DB");
         pd.setTitle(HttpStatus.BAD_REQUEST.getReasonPhrase());
         return pd;
     }

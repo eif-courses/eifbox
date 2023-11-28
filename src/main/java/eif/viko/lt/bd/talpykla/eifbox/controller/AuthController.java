@@ -18,7 +18,6 @@ public class AuthController {
 
     private final AuthRepository repository;
 
-    @Autowired
     public AuthController(AuthRepository repository) {
         this.repository = repository;
     }
